@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <% include partials/head %>
+</head>
+<body class="container">
+
+<header>
+    <% include partials/header %>
+</header>
+
+Highscores:
+
+<ul>
+    <% highscores.forEach(function(player) { %>
+    <li><%= player.name %></li>
+        <ul>
+            <% player.highscores.forEach(function(highscore) { %>
+                <li><%= highscore.score %></li>
+            <% }); %>
+        </ul>
+    <% }); %>
+</ul>
+
+<footer>
+    <% include partials/footer %>
+</footer>
+
+</body>
+</html>
