@@ -2,14 +2,33 @@
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+// express magic
 var express = require('express');
+var app = express();
+var device = require('express-device');
 var path = require('path');
 var favicon = require('serve-favicon');
 var logger = require('morgan');
-var cookieParser = require('cookie-parser');
+
 var bodyParser = require('body-parser');
 
-var app = express();
+app.use(express.static(__dirname + '/public'));
+app.use(express.static(__dirname + '/node_modules'));
+app.use(logger('dev'));
+
+var urlencodedParser = bodyParser.urlencoded({
+  extended: true
+});
+
+app.set('view engine', 'ejs');
+app.set('views', __dirname + '/views/');
+app.use(device.capture());
+
+// logs every request
+app.use(function (req, res, next) {
+  console.log({ method: req.method, url: req.url, device: req.device });
+  next();
+});
 
 var Player = function Player(name) {
   _classCallCheck(this, Player);
@@ -26,36 +45,26 @@ var Highscore = function Highscore(date, score) {
 };
 
 var peter = new Player("Peter");
+peter.highscores.push(new Highscore("jetzt", 1));
 peter.highscores.push(new Highscore("jetzt", 5));
-peter.highscores.push(new Highscore("jetzt", 10));
-peter.highscores.push(new Highscore("jetzt", 15));
+peter.highscores.push(new Highscore("jetzt", 9));
 
 var markus = new Player("Markus");
-markus.highscores.push(new Highscore("jetzt", 5));
+markus.highscores.push(new Highscore("jetzt", 2));
+markus.highscores.push(new Highscore("jetzt", 6));
 markus.highscores.push(new Highscore("jetzt", 10));
-markus.highscores.push(new Highscore("jetzt", 15));
 
 var lukas = new Player("Lukas");
-lukas.highscores.push(new Highscore("jetzt", 5));
-lukas.highscores.push(new Highscore("jetzt", 10));
-lukas.highscores.push(new Highscore("jetzt", 15));
+lukas.highscores.push(new Highscore("jetzt", 3));
+lukas.highscores.push(new Highscore("jetzt", 17));
+lukas.highscores.push(new Highscore("jetzt", 11));
 
 var michael = new Player("Michael");
-michael.highscores.push(new Highscore("jetzt", 5));
-michael.highscores.push(new Highscore("jetzt", 10));
-michael.highscores.push(new Highscore("jetzt", 15));
+michael.highscores.push(new Highscore("jetzt", 4));
+michael.highscores.push(new Highscore("jetzt", 18));
+michael.highscores.push(new Highscore("jetzt", 22));
 
 var highscores_players_obj = [peter, markus, lukas, michael];
-
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'ejs');
-
-app.use(logger('dev'));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
 
 /* GET home page. */
 app.get('/', function (req, res) {
@@ -70,16 +79,58 @@ app.get('/highscores', function (req, res) {
   req.accepts('application/json');
 
   if (req.get("accept") == 'application/json') {
-    res.json(highscores_players_obj);
+    console.log("--------------- JSON ausgeliefert");
+
+    var result = [];
+    var name;
+
+    var result = [];
+    for (var i = 0; i < highscores_players_obj.length; i++) {
+
+      var obj = highscores_players_obj[i];
+
+      var name = obj.name;
+
+      for (var j = 0; j < obj.highscores.length; j++) {
+
+        var highscore = obj.highscores[j];
+
+        if (result.length == 0) {
+          result.push({ name: name, score: highscore.score });
+        } else {
+          var position_to_insert = 0;
+          for (var r = 0; r < result.length; r++) {
+            if (highscore.score < result[r].score) {
+              position_to_insert = r + 1;
+            } else {
+              break;
+            }
+          }
+          result.splice(position_to_insert, 0, { name: name, score: highscore.score });
+        }
+      }
+    }
+
+    res.json(result);
   } else {
+    console.log("--------------- HTML ausgeliefert");
     res.render('highscores', { highscores: highscores_players_obj });
   }
 });
 
-app.post('/highscores', function (req, res) {
-  console.log(req.body);
+app.post('/highscores', urlencodedParser, function (req, res) {
+  req.accepts('application/json');
 
-  if (playerIsAlreayInHighscores(req.body.name)) {} else {
+  var found = false;
+  highscores_players_obj.forEach(function (player) {
+    if (req.body.name == player.name) {
+      // found player
+      found = true;
+      player.highscores.push(new Highscore(Date.now(), req.body.score));
+    }
+  });
+
+  if (!found) {
     /* Add as new Player */
     var player = new Player(req.body.name);
     player.highscores.push(new Highscore(Date.now(), req.body.score));
@@ -88,15 +139,6 @@ app.post('/highscores', function (req, res) {
 
   res.json(highscores_players_obj);
 });
-
-/* Players */
-app.get('/players', function (req, res) {
-  res.render('players', {
-    players: { player: highscores_players_obj }
-  });
-});
-
-app.post('/players', function (req, res) {});
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
