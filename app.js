@@ -41,10 +41,8 @@ class Highscore {
   }
 }
 
-var peter = new Player("Peter");
-peter.highscores.push(new Highscore("jetzt", 1));
-peter.highscores.push(new Highscore("jetzt", 5));
-peter.highscores.push(new Highscore("jetzt", 9));
+var peter = new Player("Messi");
+peter.highscores.push(new Highscore("jetzt", 79));
 
 var markus = new Player("Markus");
 markus.highscores.push(new Highscore("jetzt", 2));
